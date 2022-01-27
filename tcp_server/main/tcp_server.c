@@ -1,158 +1,147 @@
-#include <string.h>
-#include <sys/param.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_system.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "esp_log.h"
-#include "nvs_flash.h"
-#include "esp_netif.h"
-#include "protocol_examples_common.h"
-
 #include "freertos/semphr.h"
-#include "esp_err.h"
 
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
+
 #include "esp_log.h"
 #include "esp_check.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_netif.h"
+#include "esp_err.h"
 
-// To get decision_tree_firewall
+#include <string.h>
+#include <sys/param.h>
 #include "firewall.h"
-#include "model.h"
+#include "protocol_examples_common.h"
+#include "nvs_flash.h"
 
-#include <unistd.h>     // For sleep()
-
-#define PORT                        CONFIG_EXAMPLE_PORT
+#define MENUCONFIG_PORT             CONFIG_EXAMPLE_PORT
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
 #define ATTACKER_ADDRESS            "192.168.15.10" // Change this to your IP
+#define ESP32_ADDRESS               "192.168.15.20" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
 
-static const char *TAG = "UDP Server";
+static const char *TAG = "Experiment Server";
+
+typedef struct {
+    int sock;
+    sockaddr_in addr;
+} exp_arg_t;
 
 bool is_finish = false;
 
-int iperf_run_tcp_server(struct sockaddr_in *listen_addr)
-{
-    struct sockaddr_in listen_addr4 = { 0 };
-    int listen_socket = -1;
-    int client_socket = -1;
-    int opt = 1;
-    int err = 0;
-    esp_err_t ret = ESP_OK;
-    struct sockaddr_in remote_addr;
-    struct timeval timeout = { 0 };
+char send_msg(char* msg, int msg_socket, struct sockaddr_in* to_addr);
+int iperf_setup_tcp_server(struct sockaddr_in *listen_addr);
+void setup_experiment(exp_arg_t* arg);
+static void iperf_tcp_server(int attacker_sock);
+static void experiment_runner_task(void *pvParameters);
+void measurer_task(void *pvParameters);
 
-    listen_addr4.sin_family = AF_INET;
-    listen_addr4.sin_port = htons(IPERF_PORT);
-    listen_addr4.sin_addr.s_addr = 0;
-    inet_pton(AF_INET, "192.168.15.20", &(listen_addr4.sin_addr));
+void app_main(void) {
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    listen_socket = socket(AF_INET, SOCK_STREAM, 0);
+    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
+     * Read "Establishing Wi-Fi or Ethernet Connection" section in
+     * examples/protocols/README.md for more information about this function.
+     */
+    ESP_ERROR_CHECK(example_connect());
+
+    // 1. Configuring our UDP socket
+    struct sockaddr_in dest_addr = {
+        .sin_addr.s_addr = htonl(INADDR_ANY);
+        .sin_family = AF_INET;
+        .sin_port = htons(MENUCONFIG_PORT);    // MENUCONFIG_PORT fr
+    }
+
+    // 2. Opening the UDP socket
+    int attacker_sock = socket(addr_family, SOCK_DGRAM, IPPROTO_IP);
+    if (attacker_sock < 0) {
+        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+        vTaskDelete(NULL);
+    }
+
+    // 3. Binding our UDP socket so we can receive incoming packets
+    if (bind(attacker_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) != 0) {
+        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+    }
+    ESP_LOGI(TAG, "Socket bound to port %d (from menuconfig)", MENUCONFIG_PORT);
+
+    struct sockaddr_in attacker_addr = {
+        .sin_family = AF_INET,
+        .sin_addr.s_addr = 0,   // we set this in inet_pton below
+        .sin_port = htons(ATTACKER_PORT)
+    };
+    inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
+
+    exp_arg_t arg = { .sock = attacker_sock, .addr = attacker_addr};
+    setup_experiment(arg);
+
+#ifdef CONFIG_EXAMPLE_IPV4
+    xTaskCreate(measurer_task, "measurer", 4096, (void *)&arg, 4, NULL);
+    xTaskCreate(experiment_runner_task, "experiment_runner", 4096, (void *)&arg, 5, NULL);
+#endif
+}
+
+char send_msg(char* msg, int msg_socket, struct sockaddr_in* to_addr) {
+    char answer = '\0';
+    while (answer == '\0') {
+        int read_bytes = sendto(msg_socket, msg, strlen(msg), 0, (struct sockaddr*) to_addr, sizeof(struct sockaddr_in));
+        ESP_LOGI(TAG, "sent %s", msg);
+        recv(msg_socket, &answer, sizeof(answer), 0);
+    }
+
+    return answer;
+}
+
+int iperf_setup_tcp_server(struct sockaddr_in *listen_addr) {
+    listen_addr->sin_family = AF_INET;
+    listen_addr->sin_port = htons(IPERF_PORT);
+    inet_pton(AF_INET, ESP32_ADDRESS, (listen_addr.sin_addr));
+
+    int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     ESP_GOTO_ON_FALSE((listen_socket >= 0), ESP_FAIL, exit, TAG, "Unable to create socket: errno %d", errno);
 
+    int opt = 1;
     setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     ESP_LOGI(TAG, "Socket created iperf");
 
-    err = bind(listen_socket, (struct sockaddr *)&listen_addr4, sizeof(struct sockaddr_in));
+    int err = 0;
+    err = bind(listen_socket, (struct sockaddr *)listen_addr, sizeof(struct sockaddr_in));
     ESP_GOTO_ON_FALSE((err == 0), ESP_FAIL, exit, TAG, "Socket unable to bind: errno %d, IPPROTO: %d", errno, AF_INET);
     
-    ESP_LOGI(TAG, "esperando o accept");
     err = listen(listen_socket, 5);
     ESP_GOTO_ON_FALSE((err == 0), ESP_FAIL, exit, TAG, "Error occurred during listen: errno %d", errno);
 
+    struct sockaddr_in remote_addr;
     socklen_t len = sizeof(remote_addr);
-    client_socket = accept(listen_socket, (struct sockaddr *)&remote_addr, &len);
+    int client_socket = accept(listen_socket, (struct sockaddr *)&remote_addr, &len);
     ESP_GOTO_ON_FALSE((client_socket >= 0), ESP_FAIL, exit, TAG, "Unable to accept connection: errno %d", errno);
-    ESP_LOGW(TAG, "accept: %s,%d\n", inet_ntoa(remote_addr.sin_addr), htons(remote_addr.sin_port));
+    ESP_LOGI(TAG, "accept - ip: %s port: %d\n", inet_ntoa(remote_addr.sin_addr), htons(remote_addr.sin_port));
 
-    timeout.tv_sec = 10;
+    struct timeval timeout = { .tv_sec = 10, .tv_usec = 0 };
     setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    
-    memcpy(listen_addr, &listen_addr4, sizeof(struct sockaddr_in));
 
 exit:
     return client_socket;
 }
 
-void init(int message_socket) {
-    // 1. Signal experiment start to attacker by sending "start"
-    struct sockaddr_in attacker_addr = {
-        .sin_family = AF_INET,
-        .sin_addr.s_addr = 0,
-        .sin_port = htons(ATTACKER_PORT)
-    };
-    inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
-
-    // 2. Attacker responds with experiment's tree (ascii byte in ["6", "7", "8", "9", "0", "1", "2"])
-    char* msg = "start";
-    char chosen_tree = '\0';
-    while (chosen_tree == '\0') {
-        int read_bytes = sendto(message_socket, msg, strlen(msg), 0, (struct sockaddr*) &attacker_addr, sizeof(attacker_addr));
-        ESP_LOGI(TAG, "sent %s", msg);
-        recv(message_socket, &chosen_tree, sizeof(chosen_tree), 0);
-    }
-    ESP_LOGI(TAG, "chosen_tree: %c", chosen_tree);
-
-    // 3. Assign firewall function pointer to tree chosen by attacker
-    firewall_statefull_fn = NULL;
-    firewall_stateless_fn = NULL;
-    is_firewall_stateless = true;
-    switch (chosen_tree) {
-        case '6':
-            firewall_stateless_fn = decision_tree_depth_6;
-            break;
-        case '7':
-            firewall_stateless_fn = decision_tree_depth_7;
-            break;
-        case '8':
-            firewall_stateless_fn = decision_tree_depth_8;
-            break;
-        case '9':
-            firewall_stateless_fn = decision_tree_depth_9;
-            break;
-        case '0':
-            firewall_stateless_fn = decision_tree_depth_10;
-            break;
-        case '1':
-            firewall_stateless_fn = decision_tree_depth_11;
-            break;
-        case '2':
-            firewall_stateless_fn = decision_tree_depth_12;
-            break;
-        case 'r':
-            firewall_statefull_fn = validate_packet;
-            is_firewall_stateless = false;
-            break;
-        default:
-            ESP_LOGE(TAG, "Invalid tree selected by attacker: %c", chosen_tree);
-            return;
-    }
-
-    // 4. Signal that ESP32 assigned the tree previously sent and experiment is ready to begin
-    msg = "assigned";
-    ESP_LOGI(TAG, "%s", msg);
-    int read_bytes = sendto(message_socket, msg, strlen(msg), 0, (struct sockaddr*) &attacker_addr, sizeof(attacker_addr));
-    ESP_LOGI(TAG, "sent %s", msg);
-
-    /*close(message_socket);*/
-}
-
-// This functions runs untils it receives the message b"D"
-static void receive_experiment(const int sock, time_t experiment_duration)
-{
+static void iperf_tcp_server(int attacker_sock) {
     struct sockaddr_in listen_addr = { 0 };
-    int recv_socket = iperf_run_tcp_server(&listen_addr); 
-    ESP_LOGE(TAG, "recv_socket: %d", recv_socket);
-    ESP_LOGE(TAG, "listen_addr: %s", inet_ntoa(listen_addr.sin_addr.s_addr));
+    int recv_socket = iperf_setup_tcp_server(&listen_addr); 
     socklen_t socklen = sizeof(listen_addr);
     uint8_t *buffer = malloc(16 << 10);
     int want_recv = 16 << 10;
@@ -163,21 +152,22 @@ static void receive_experiment(const int sock, time_t experiment_duration)
         if (result < 0) {
             ESP_LOGE(TAG, "errno recv: %d", errno);
         } else {
-            /* firewall_actual_len += result; */
+            /* exp_firewall_bandwidth += result; */
         }
     }
     
-    ESP_LOGW(TAG, "terminou iperf");
+    ESP_LOGW(TAG, "finished running iperf");
 
+    // Wait for attacker to signal that experiment is over
     int32_t len;
     char rx_buffer[3];
     do {
-        len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+        len = recv(attacker_sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
         if (len < 0) {
             ESP_LOGE(TAG, "recv() error");
             perror(NULL);
         } else if (len == 0) {
-            ESP_LOGE(TAG, "Connection close");
+            ESP_LOGE(TAG, "Connection closed");
         } else {
             rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
             ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
@@ -185,34 +175,80 @@ static void receive_experiment(const int sock, time_t experiment_duration)
     } while (rx_buffer[0] != 'D');
 }
 
-static void udp_server_task(void *pvParameters)
-{
-    int message_sock = (int)pvParameters;
-    /*ESP_LOGI(TAG, "NOSSA SOCKET UDP: %d", message_sock);*/
-    // Wait for attacker to signalize experiment end
-    receive_experiment(message_sock, 10);
+void setup_experiment(exp_arg_t* arg) {
+    // 1. Signal experiment start to attacker by sending "start"
+    // 2. Attacker responds with experiment's tree (ascii byte in ["6", "7", "8", "9", "0", "1", "2", "r"])
+    char chosen_tree = send_msg("start", arg->sock, &arg->addr);
+    ESP_LOGI(TAG, "chosen_tree: %c", chosen_tree);
+
+    // 3. Assign firewall function pointer to tree chosen by attacker
+    firewall_config_t config = {
+        .stateless_eval = NULL;
+        .statefull_eval = NULL;
+        .mode = STATELESS;
+    };
+    switch (chosen_tree) {
+        case '6':
+            config.stateless_eval = decision_tree_depth_6;
+            break;
+        case '7':
+            config.stateless_eval = decision_tree_depth_7;
+            break;
+        case '8':
+            config.stateless_eval = decision_tree_depth_8;
+            break;
+        case '9':
+            config.stateless_eval = decision_tree_depth_9;
+            break;
+        case '0':
+            config.stateless_eval = decision_tree_depth_10;
+            break;
+        case '1':
+            config.stateless_eval = decision_tree_depth_11;
+            break;
+        case '2':
+            config.stateless_eval = decision_tree_depth_12;
+            break;
+        case 'r':
+            config.statefull_eval = validate_packet;
+            config.mode = STATEFULL;
+            break;
+        default:
+            ESP_LOGE(TAG, "Invalid tree selected by attacker: %c", chosen_tree);
+            return;
+    }
+
+    init_firewall(config);
+
+    // 4. Signal that ESP32 assigned the tree previously sent and experiment is ready to begin
+    send_msg("assigned", arg->sock, &arg->addr);
+}
+
+static void experiment_runner_task(void *pvParameters) {
+    exp_arg_t arg = (exp_arg_t)pvParameters;
+    iperf_tcp_server(arg.sock, 10);
 
     // Signal to attacker that esp will restart
-    struct sockaddr_in attacker_addr = {
-        .sin_family = AF_INET,
-        .sin_addr.s_addr = 0,
-        .sin_port = htons(ATTACKER_PORT)
-    };
-    inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
-
-    char* msg = "complete";
-    int read_bytes = sendto(message_sock, msg, strlen(msg), 0, (struct sockaddr*) &attacker_addr, sizeof(attacker_addr));
-    ESP_LOGI(TAG, "sent %s", msg);
-    ESP_LOGI(TAG, "Experiment over, rebooting...");
+    send_msg("complete", arg.sock, &arg.addr);
 
     // Close all sockets and reboot
-    shutdown(message_sock, SHUT_RD);
-    close(message_sock);
+    ESP_LOGI(TAG, "Experiment over, rebooting...");
+    shutdown(attacker_sock, SHUT_RD);
+    close(attacker_sock);
     esp_restart();
 }
 
 void measurer_task(void *pvParameters) {
-    int listen_sock = (int)(pvParameters);
+    UBaseType_t n_tasks = uxTaskGetNumberOfTasks();
+    TaskStatus_t* tasks = malloc(n_tasks * sizeof(TaskStatus_t));
+
+    unsigned long runtime = 0;
+    n_tasks = uxTaskGetSystemState(tasks, n_tasks, &runtime);
+    for (int i = 0; i < n_tasks; i++) {
+        printf("task name: %s\n", tasks[i].pcTaskName);
+    }
+
+    exp_arg_t arg = (exp_arg_t*)(pvParameters);
 
     size_t stats_len = (uxTaskGetNumberOfTasks() * 50) + 100;
     char* runtime_stats = malloc(stats_len);
@@ -221,21 +257,13 @@ void measurer_task(void *pvParameters) {
         return;
     }
 
-    // Get stats from "wifi" task (which houses the lwip stack)
+    // Get handle to "wifi" task (which houses the lwip stack)
     TaskHandle_t wifi_task = xTaskGetHandle("wifi");
     if (!wifi_task) {
         ESP_LOGE(TAG, "wifi task not found");
         return;
     }
 
-    // 6. Configure attacker UDP socket
-    struct sockaddr_in attacker_addr = {
-        .sin_family = AF_INET,
-        .sin_addr.s_addr = 0,
-        .sin_port = htons(ATTACKER_EXP_PORT)
-    };
-    inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
-    
     uint32_t cur = 0;
     uint32_t interval = 1;
     int experiment_duration = 10;
@@ -252,99 +280,32 @@ void measurer_task(void *pvParameters) {
         size_t heap_stats = heap_caps_get_total_size(MALLOC_CAP_8BIT | MALLOC_CAP_32BIT);
         sprintf(&runtime_stats[size_stats], "Heap\t%zu", heap_stats);
 
-        size_stats = strlen(runtime_stats);
+        size_stats += strlen(runtime_stats+size_stats);
         runtime_stats[size_stats] = '\0';
 
         // Generate and append Stack stats to collected data
         UBaseType_t stack_stats = uxTaskGetStackHighWaterMark(wifi_task);
         sprintf(&runtime_stats[size_stats], "\r\nStack\t%u", stack_stats);
 
-        // HEXDUMP for debug
-        /*ESP_LOG_BUFFER_HEXDUMP(TAG, runtime_stats, stats_len, ESP_LOG_INFO);*/
-
         // Get network bandwidth stats
-        size_stats = strlen(runtime_stats);
+        size_stats += strlen(runtime_stats+size_stats);
         runtime_stats[size_stats] = '\0';
 
-        double actual_bandwidth = (firewall_actual_len / 1e6 * 8) / interval;
+        double actual_bandwidth = (exp_firewall_bandwidth / 1e6 * 8) / interval;
         sprintf(&runtime_stats[size_stats], "\r\nMbps\t%.2f", actual_bandwidth);
-        printf("actual_bandwidth: %.2f", actual_bandwidth);
+        printf("actual_bandwidth: %.2f |-------------\n", actual_bandwidth);
         cur += interval;
                
         // Reset network measuring after experiment.
-        firewall_actual_len = 0;
+        exp_firewall_bandwidth = 0;
 
         // Sending experiment data...
-        int sent_bytes = sendto(listen_sock, runtime_stats, strlen(runtime_stats), 0, (struct sockaddr*) &attacker_addr, sizeof(attacker_addr));
+        int sent_bytes = sendto(listen_sock, runtime_stats, strlen(runtime_stats), 0, (struct sockaddr*) &arg.addr, sizeof(arg.addr));
         /*ESP_LOGI(TAG, "run_time_stats: %s", runtime_stats);*/
-        ESP_LOGI(TAG, " len %d. Done.", sent_bytes);
 
         // Put the thread to sleep and do the next iteration after `sleep_duration`
         const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;
         vTaskDelay(xDelay);
-
-        // HEXDUMP das filas de pacote
-        /*ESP_LOG_BUFFER_HEXDUMP(TAG, flow_queue.pq, TAM_FLOW*TAM*sizeof(struct pbuf), ESP_LOG_INFO);*/
     }
     is_finish = true;
-}
-
-// ESP32:    start
-// Attacker: '6'
-// ESP32:    assigned
-// loop {
-//  Esp32: collects then sends experiment data
-//  sleep(1sec)
-// }
-// Attacker: 'D'
-// ESP32: complete
-void app_main(void)
-{
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-    ESP_ERROR_CHECK(example_connect());
-
-    int addr_family = (int)AF_INET;
-    int ip_protocol = 0;
-    struct sockaddr_storage dest_addr;
-
-    // 1. Configuring our UDP socket
-    if (addr_family == AF_INET) {
-        struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
-        dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
-        dest_addr_ip4->sin_family = AF_INET;
-        dest_addr_ip4->sin_port = htons(PORT);
-        ip_protocol = IPPROTO_IP;
-    }
-
-    // 2. Opening the UDP socket
-    int message_sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
-    if (message_sock < 0) {
-        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-        vTaskDelete(NULL);
-        return;
-    }
-
-    ESP_LOGI(TAG, "Socket created app_main");
-
-    // 3. Binding our UDP socket so we can receive incoming packets
-    int err = bind(message_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    if (err != 0) {
-        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-        ESP_LOGE(TAG, "IPPROTO: %d", addr_family);
-    }
-    ESP_LOGI(TAG, "Socket bound to port %d", PORT);
-
-    init(message_sock);
-
-#ifdef CONFIG_EXAMPLE_IPV4
-    xTaskCreate(measurer_task, "measurer", 4096, (void *)message_sock, 4, NULL);
-    xTaskCreate(udp_server_task, "udp_server", 4096, (void *)message_sock, 5, NULL);
-#endif
 }

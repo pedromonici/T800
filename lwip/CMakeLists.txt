@@ -8,9 +8,7 @@ set(include_dirs
     )
 
 set(srcs
-    "/home/pedromonici/USP/IC/tcp_server/firewall/flow_queue.c"
-    "/home/pedromonici/USP/IC/tcp_server/firewall/packet_queue.c"
-    "lwip/src/core/ipv4/connection_id.c"
+    "tcp_server/firewall/firewall.c"
     "apps/sntp/sntp.c"
     "lwip/src/api/api_lib.c"
     "lwip/src/api/api_msg.c"

@@ -1,12 +1,14 @@
-#include "firewall.h"
+#include "stateless.h"
 
-static const char *TAG = "Firewall";
+#include "lwip/tcp.h"
+#include "lwip/priv/tcp_priv.h"
+#include "esp_log.h"
+
+static const char *TAG = "Firewall Stateless";
 
 err_t decision_tree_depth_6(struct pbuf *p) {
     const struct ip_hdr *iphdr = (struct ip_hdr *)p->payload;
-    /*const struct ip6_hdr *ip6hdr = (struct ip6_hdr *)p->payload;*/
 
-    /*if (IP6H_NEXTH(ip6hdr) == IP6_NEXTH_TCP) {*/
     if (IPH_PROTO(iphdr) != IP_PROTO_TCP) {
         /* ESP_LOGI(TAG, "IS_NOT_A_TCP_PACKET"); */
         return ERR_OK;
@@ -14,12 +16,9 @@ err_t decision_tree_depth_6(struct pbuf *p) {
     /* ESP_LOGI(TAG, "IS_A_TCP_PACKET"); */
 
     u16_t iphdr_hlen = IPH_HL_BYTES(iphdr);
-    /*u16_t hlen = IP6_HLEN;*/
 
     /* increase payload pointer (guarded by length check above) */
     struct tcp_hdr *tcphdr = (struct tcp_hdr *) ((u8_t *)p->payload + iphdr_hlen);
-    /*struct tcp_hdr *tcphdr = (struct tcp_hdr *) ((u8_t *)p->payload + hlen);*/
-
 
     if (htons(IPH_LEN(iphdr)) < 64.5) {
         if (TCPH_HDRLEN(tcphdr) < 38.0) {

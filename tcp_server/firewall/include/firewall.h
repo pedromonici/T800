@@ -4,25 +4,27 @@
 extern "C" {
 #endif
 
-#include "lwip/ip.h"
-#include "lwip/tcp.h"
-#include "lwip/priv/tcp_priv.h"
-#include "esp_log.h"
+#define MAX_CONNECTIONS 11
+#define MAX_QUARANTINE_SIZE 4
 
-err_t decision_tree_depth_6(struct pbuf *p);
+#include "statefull.h"
+#include "stateless.h"
+#include "connection.h"
 
-err_t decision_tree_depth_7(struct pbuf *p);
+typedef enum _firewall_mode {
+    STATELESS,
+    STATEFULL
+} firewall_mode;
 
-err_t decision_tree_depth_8(struct pbuf *p);
+typedef struct _firewall_config_t {
+    err_t (*stateless_eval)(struct pbuf*);
+    err_t (*statefull_eval)(conn_id_t, queue<conn_headers_t>);
+    firewall_mode mode;
+} firewall_config_t;
 
-err_t decision_tree_depth_9(struct pbuf *p);
+void init_firewall(firewall_config_t cfg);
 
-err_t decision_tree_depth_10(struct pbuf *p);
-
-err_t decision_tree_depth_11(struct pbuf *p);
-
-err_t decision_tree_depth_12(struct pbuf *p);
-
+err_t run_firewall(struct pbuf* p);
 
 #ifdef __cplusplus
 }

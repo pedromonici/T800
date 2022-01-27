@@ -59,120 +59,10 @@
 #include "lwip/ip4_napt.h"
 #include "esp_log.h"
 
-#include <string.h>
+#include "firewall.h"
+uint32_t exp_firewall_bandwidth = 0;
 
-// ======== Firewall flow structures ========
-#include "packet_queue.h"
-#include "flow_queue.h"
-#include "hash.h"
-
-err_t (*firewall_stateless_fn)(struct pbuf*);
-err_t (*firewall_statefull_fn)(struct pbuf *, Conn_id_t, Conn_signature_t);
-uint32_t firewall_actual_len = 0;
-FlowQueue flow_queue = {.start = 0, .end = 0};
-int flow_hash[TAM_FLOW] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-
-Conn_id_t blacklist[TAM_FLOW] = { 0 };
-bool is_firewall_stateless = true;
-
-static const char *TAG = "Decision_Tree";
-
-void insert_blacklist(Conn_id_t* hash, Conn_id_t* id, unsigned key);
-bool in_blacklist(Conn_id_t* hash, Conn_id_t* id, unsigned key);
-
-// id - 4-tuple parameters (used by hash_table)
-bool firewall_statefull(struct pbuf *p, Conn_id_t id, Conn_signature_t signature) {
-  u8_t key[12] = {0};
-  firewall_get_key_from_id(id, key);
-  unsigned hash_key = wyhash32(key, 12, 0xcafebabe);
-
-  /* ESP_LOGI(TAG, "hash_key: %u", hash_key); */
-  int flow_idx = flow_hash[hash_key % TAM_FLOW];
-  /* ESP_LOGE(TAG, "HASH_KEY: %u FLOW_IDX: %d", hash_key, flow_idx); */
-  PacketQueue* flow = NULL;
-  if (flow_idx >= 0) {  // Packet already has a flow
-    /* ESP_LOGW(TAG, "found existed flow"); */
-    // Get flow
-    flow = fq_get_flow(&flow_queue, flow_idx);
-    if (firewall_signature_cmp(&flow->flows[0], &signature)) {
-        // Insert current packet signature
-        pq_insert(flow, &signature);
-    } else {
-        goto gamer;
-    }
-  } else {  // Packet introduces new flow
-    // Get stale flow (which will be cleared)
-    gamer:
-    ESP_LOGW(TAG, "insert new flow");
-    int new_flow_idx = flow_queue.end;
-    flow = fq_get_flow(&flow_queue, flow_queue.end);
-    
-    if (flow->is_initialized) {
-        Conn_signature_t stale_signature = flow->flows[0];
-        Conn_id_t stale_id = {
-            .ip_src   = stale_signature.iphdr->src,
-            .ip_dst   = stale_signature.iphdr->dest,
-            .port_src = stale_signature.tcphdr->src,
-            .port_dst = stale_signature.tcphdr->dest
-        };
-        u8_t stale_key[12] = {0};
-        firewall_get_key_from_id(stale_id, stale_key);
-
-        // Remove stale_key from hash
-        unsigned stale_hash_key = wyhash32(stale_key, 12, 0xcafebabe);
-        flow_hash[stale_hash_key % TAM_FLOW] = -1;
-        for (int i = 0; i < TAM; i++) {
-            free(flow->flows[i].iphdr);
-            free(flow->flows[i].tcphdr);
-        }
-    }
-
-    // Insert new flow (initialized with 1 signature) on flow queue
-    fq_insert(&flow_queue, &signature);
-    flow_hash[hash_key % TAM_FLOW] = new_flow_idx;
-    flow = fq_get_flow(&flow_queue, new_flow_idx);
-  }
-
-  if (pq_is_full(flow)) {
-    bool malicious_flow = in_blacklist(blacklist, &id, hash_key % TAM_FLOW);
-    if (malicious_flow) {
-      /* ESP_LOGE(TAG, "flow in blacklist"); */
-      return true;
-    } else if (firewall_statefull_fn(p, id, signature) == ERR_ABRT) {
-      /* ESP_LOGE(TAG, "flow malicious"); */
-      insert_blacklist(blacklist, &id, hash_key % TAM_FLOW);
-      return true;
-    }
-  } 
-
-  return false;
-}
-
-bool firewall_stateless(struct pbuf* p) {
-  if (firewall_stateless_fn == NULL) return false;
-  if ((firewall_stateless_fn(p) == ERR_ABRT)) return true;
-  return false;
-}
-
-// In case flow is blacklisted, return true
-bool in_blacklist(Conn_id_t* hash, Conn_id_t* id, unsigned key){
-	int visited = 0;    // Since linear probing is used, key may not
-	while(visited++ < TAM_FLOW) { // map directly to its position
-		Conn_id_t wanted_id = hash[key];
-		if(wanted_id.port_src != 0 && firewall_id_cmp(id, &wanted_id)){
-			return true;
-		}
-
-		key = (key+1) % TAM_FLOW;
-	}
-
-	return false;
-}
-
-// Insert in blacklist - if a collision happens, insert anyway
-void insert_blacklist(Conn_id_t* hash, Conn_id_t* id, unsigned key){
-  hash[key] = *id;
-}
+static const char *TAG = "ip4.c";
 
 #ifdef LWIP_HOOK_FILENAME
 #include LWIP_HOOK_FILENAME
@@ -650,31 +540,12 @@ ip4_input(struct pbuf *p, struct netif *inp)
   // ================ Firewall here ================
 
   // Getting network bandwidth
-  firewall_actual_len += p->len;
-  /* ESP_LOGI(TAG, "actual_len: %d", firewall_actual_len); */
+  exp_firewall_bandwidth += p->len;
+  /* ESP_LOGI(TAG, "actual_len: %d", exp_firewall_bandwidth); */
   /* increase payload pointer (guarded by length check above) */
   struct tcp_hdr *tcphdr = (struct tcp_hdr *) ((u8_t *)p->payload + iphdr_hlen);
 
-  bool is_invalid_packet = false;
-  if (is_firewall_stateless) {
-    is_invalid_packet = firewall_stateless(p);
-  } else {
-    Conn_id_t id = {
-        .ip_src   = iphdr->src,
-        .ip_dst   = iphdr->dest,
-        .port_src = tcphdr->src,
-        .port_dst = tcphdr->dest
-    };
-    Conn_signature_t signature; 
-    signature.iphdr = malloc(sizeof(struct ip_hdr));
-    signature.tcphdr = malloc(sizeof(struct tcp_hdr));
-    memcpy(signature.iphdr, iphdr, sizeof(struct ip_hdr));
-    memcpy(signature.tcphdr, tcphdr, sizeof(struct tcp_hdr));
-
-    is_invalid_packet = firewall_statefull(p, id, signature);
-  }
-
-  if (is_invalid_packet) {
+  if (run_firewall(p, iphdr, tcphdr) == ERR_ABRT) {
     ESP_LOGE(TAG, "packet_dropped");
     pbuf_free(p);
     return ERR_OK;

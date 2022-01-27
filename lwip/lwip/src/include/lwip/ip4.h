@@ -53,10 +53,7 @@
 extern "C" {
 #endif
 
-extern err_t (*firewall_stateless_fn)(struct pbuf*);
-extern err_t (*firewall_statefull_fn)(struct pbuf *, Conn_id_t, Conn_signature_t);
-extern uint32_t firewall_actual_len;
-extern bool is_firewall_stateless;
+extern uint32_t exp_firewall_bandwidth;
 
 #ifdef LWIP_HOOK_IP4_ROUTE_SRC
 #define LWIP_IPV4_SRC_ROUTING   1

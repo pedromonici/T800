@@ -21,18 +21,18 @@ typedef struct _conn_id_t {
   ip4_addr_p_t ip_dst;
   u16_t port_src;
   u16_t port_dst;
-} Conn_id_t;
+} conn_id_t;
 
-typedef struct _conn_signature_t {
+void firewall_get_key_from_id(conn_id_t id, u8_t *key);
+bool id_cmp(conn_id_t* id1, conn_id_t* id2);
+
+typedef struct _conn_headers_t {
   struct ip_hdr *iphdr;
   struct tcp_hdr *tcphdr;
-} Conn_signature_t;
+} conn_headers_t;
 
-void firewall_get_key_from_id(Conn_id_t id, u8_t *key);
-bool firewall_id_cmp(Conn_id_t* id1, Conn_id_t* id2);
-
-// Compare both the ip_header checksum and the tcp_header checksum of both signatures
-bool firewall_signature_cmp(Conn_signature_t* sig1, Conn_signature_t* sig2);
+// Compare both the ip_header checksum and the tcp_header checksum of both headerss
+bool firewall_headers_cmp(conn_headers_t* hdr1, conn_headers_t* hdr2);
 
 #ifdef __cplusplus
 }

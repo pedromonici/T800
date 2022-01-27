@@ -63,7 +63,6 @@ set(lwipcore4_SRCS
     ${LWIP_DIR}/src/core/ipv4/ip4.c
     ${LWIP_DIR}/src/core/ipv4/ip4_napt.c
     ${LWIP_DIR}/src/core/ipv4/ip4_addr.c
-    ${LWIP_DIR}/src/core/ipv4/connection_id.c
 )
 set(lwipcore6_SRCS
     ${LWIP_DIR}/src/core/ipv6/dhcp6.c
