@@ -175,7 +175,7 @@ ip6_route(const ip6_addr_t *src, const ip6_addr_t *dest)
     /* Again, do not use any other netif in this case, as that could result in
      * zone boundary violations. */
 #if ESP_IPV6
-    if (ip6_addr_ismulticast(dest) || ip6_addr_isany(src)) {
+    if (ip6_addr_ismulticast(dest) || ip6_addr_isany(src)) { 
       return netif_default;
     } else {
       return NULL;
@@ -711,8 +711,6 @@ netif_found:
   /* Init header length. */
   hlen = hlen_tot = IP6_HLEN;
 
-  /*firewall goes here*/
-
   /* Move to payload. */
   pbuf_remove_header(p, IP6_HLEN);
 
@@ -1057,7 +1055,7 @@ options_done:
   LWIP_DEBUGF(IP6_DEBUG, ("ip6_input: p->len %"U16_F" p->tot_len %"U16_F"\n", p->len, p->tot_len));
 
   ip_data.current_ip_header_tot_len = hlen_tot;
-
+  
 #if LWIP_RAW
   /* p points to IPv6 header again for raw_input. */
   pbuf_add_header_force(p, hlen_tot);

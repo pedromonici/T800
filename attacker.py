@@ -1,9 +1,8 @@
 import socket
-import sys
-import random
 import time
 import subprocess
 import threading
+
 
 # Attacking computer UDP server configs
 class Attacker():
@@ -62,49 +61,54 @@ class Attacker():
         self.experiment.join()
         print(f"[-] Stopped collecting - closed file '{self.fname}'")
 
-def msg_esp(expected, esp32_addr = None, msg = None):
+
+def msg_esp(expected, attacker, esp32_addr=None, msg=None, is_sync=False):
     esp32_signal = b""
     while esp32_signal.strip() != expected:
         if msg:
             attacker.service.sendto(msg, esp32_addr)
 
         esp32_signal, esp32_addr = attacker.service.recvfrom(4096)
-        print(esp32_signal)
 
     # warn ESP that we received the expected message
-    attacker.service.sendto("x", esp32_addr)
+    if not is_sync:
+        attacker.service.sendto(b"x", esp32_addr)
 
     return esp32_addr
+
 
 def main():
     attacker = Attacker("data.csv")
 
     # trees = [b"r", b"6", b"7", b"8", b"9", b"0", b"1", b"2"]
-    trees = [b"2"]
+    trees = [b"r"]
     for tree in trees:
         print("Going to tree", tree)
-        
-        esp32_addr = msg_esp(b"start")
 
-        print(f"[+] Starting experiment: received signal {esp32_signal}")
+        esp32_addr = msg_esp(b"start", attacker, is_sync=True)
 
-        esp32_addr = msg_esp(b"assigned", esp32_addr, tree)
+        print("[+] Starting experiment:")
+
+        esp32_addr = msg_esp(b"assigned", attacker, esp32_addr, tree)
 
         print(f"[+] ESP32 assigned tree {tree}")
-        
-        print(f"[>] Sending packets ...")
+
+        print("[>] Sending packets ...")
         time.sleep(1)   # Wait for esp32 open iperf server
         attacker.collect_experiment_data()
-        subprocess.run(["iperf", "-c", esp32_server_addr, "-i", "3", "-t", "10", "-p", "5001"])
-        print(f"[>] Finished sending packets")
+        subprocess.run(["iperf", "-c", esp32_addr[0], "-i", "3", "-t", "10", "-p", "5001"])
+        print("[>] Finished sending packets")
 
         attacker.stop_experiment()
 
         # Receiving experiment results
-        msg_esp(b"complete", esp32_addr, b"D")
+        msg_esp(b"complete", attacker, esp32_addr, b"D")
 
         print("[+] ESP32 experiment complete, moving to next index")
         print("[+] Experiment data saved in file")
+
+        time.sleep(5)
+
 
 if __name__ == "__main__":
     main()

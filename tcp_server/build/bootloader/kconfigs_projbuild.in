@@ -1,4 +1,0 @@
-source "/home/pedromonici/USP/IC/esp-idf/components/bootloader/Kconfig.projbuild"
-source "/home/pedromonici/USP/IC/esp-idf/components/esp_rom/Kconfig.projbuild"
-source "/home/pedromonici/USP/IC/esp-idf/components/esptool_py/Kconfig.projbuild"
-source "/home/pedromonici/USP/IC/esp-idf/components/partition_table/Kconfig.projbuild"

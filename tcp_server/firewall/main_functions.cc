@@ -23,19 +23,12 @@ tflite::MicroInterpreter interpreter(model, resolver, tensor_arena,
 
 TfLiteStatus allocate_status = interpreter.AllocateTensors();
 
-err_t validate_packet(struct pbuf* p, Conn_id_t id, Conn_signature_t signature) {
-  const struct ip_hdr *iphdr = (struct ip_hdr *)p->payload;
-
+err_t validate_packet(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {
   if (IPH_PROTO(iphdr) != IP_PROTO_TCP) {
       /* ESP_LOGI(TAG, "IS_NOT_A_TCP_PACKET"); */
       return ERR_OK;
   }
   /* ESP_LOGI(TAG, "IS_A_TCP_PACKET"); */
-
-  u16_t iphdr_hlen = IPH_HL_BYTES(iphdr);
-
-  /* increase payload pointer (guarded by length check above) */
-  struct tcp_hdr *tcphdr = (struct tcp_hdr *) ((u8_t *)p->payload + iphdr_hlen);
 
   TfLiteTensor* input = interpreter.input(0);
   input->data.f[0] = htons(IPH_ID(iphdr));
@@ -64,13 +57,12 @@ err_t validate_packet(struct pbuf* p, Conn_id_t id, Conn_signature_t signature) 
   // Obtain the output value from the tensor
   float value = output->data.f[0];
   float value2 = output->data.f[1];
-  /* ESP_LOGI(TAG, "value: %f + %f = SUM: %f", value, value2, value + value2); */
 
   if (value > 0.5f) {
-    ESP_LOGE(TAG, "packet dropped");
+    /* ESP_LOGE(TAG, "packet dropped"); */
     return ERR_ABRT;
   }
 
-  ESP_LOGI(TAG, "packet passed");
+  /* ESP_LOGI(TAG, "packet passed"); */
   return ERR_OK;
 }

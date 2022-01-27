@@ -47,7 +47,6 @@
 #include "lwip/err.h"
 #include "lwip/netif.h"
 #include "lwip/prot/ip4.h"
-#include "lwip/connection_id.h"
 
 #ifdef __cplusplus
 extern "C" {

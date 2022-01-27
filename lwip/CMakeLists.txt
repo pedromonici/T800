@@ -8,7 +8,7 @@ set(include_dirs
     )
 
 set(srcs
-    "tcp_server/firewall/firewall.c"
+    "/home/pedromonici/USP/IC/tcp_server/firewall/firewall.c"
     "apps/sntp/sntp.c"
     "lwip/src/api/api_lib.c"
     "lwip/src/api/api_msg.c"

@@ -12,8 +12,9 @@ extern const unsigned int g_model_len;
 #include "lwip/tcp.h"
 #include "lwip/priv/tcp_priv.h"
 #include "esp_log.h"
+#include "connection.h"
 
-err_t validate_packet(struct pbuf *p, Conn_id_t id, Conn_signature_t signature);
+err_t validate_packet(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
 #ifdef __cplusplus
 }

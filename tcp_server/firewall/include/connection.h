@@ -23,13 +23,15 @@ typedef struct _conn_id_t {
   u16_t port_dst;
 } conn_id_t;
 
-void firewall_get_key_from_id(conn_id_t id, u8_t *key);
+void firewall_get_key_from_id(conn_id_t *id, u8_t *key);
 bool id_cmp(conn_id_t* id1, conn_id_t* id2);
 
 typedef struct _conn_headers_t {
   struct ip_hdr *iphdr;
   struct tcp_hdr *tcphdr;
 } conn_headers_t;
+
+conn_headers_t new_conn_header(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
 // Compare both the ip_header checksum and the tcp_header checksum of both headerss
 bool firewall_headers_cmp(conn_headers_t* hdr1, conn_headers_t* hdr2);

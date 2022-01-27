@@ -3,6 +3,8 @@
 cmake_minimum_required(VERSION 3.5)
 add_compile_options("-DINCLUDE_xTaskGetHandle=1")
 
+set(CMAKE_CXX_STANDARD 20)
+
 # (Not part of the boilerplate)
 # This example uses an extra component for common functions such as Wi-Fi and Ethernet connection.
 set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/common_components/protocol_examples_common
@@ -11,3 +13,4 @@ set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/common_components/protocol_exam
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(tcp_server)
+

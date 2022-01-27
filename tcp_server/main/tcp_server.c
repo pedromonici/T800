@@ -21,6 +21,7 @@
 #include "firewall.h"
 #include "protocol_examples_common.h"
 #include "nvs_flash.h"
+#include "model.h"
 
 #define MENUCONFIG_PORT             CONFIG_EXAMPLE_PORT
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
@@ -36,7 +37,7 @@ static const char *TAG = "Experiment Server";
 
 typedef struct {
     int sock;
-    sockaddr_in addr;
+    struct sockaddr_in addr;
 } exp_arg_t;
 
 bool is_finish = false;
@@ -61,13 +62,13 @@ void app_main(void) {
 
     // 1. Configuring our UDP socket
     struct sockaddr_in dest_addr = {
-        .sin_addr.s_addr = htonl(INADDR_ANY);
-        .sin_family = AF_INET;
-        .sin_port = htons(MENUCONFIG_PORT);    // MENUCONFIG_PORT fr
-    }
+        .sin_addr.s_addr = htonl(INADDR_ANY),
+        .sin_family = AF_INET,
+        .sin_port = htons(MENUCONFIG_PORT)    // MENUCONFIG_PORT fr
+    };
 
     // 2. Opening the UDP socket
-    int attacker_sock = socket(addr_family, SOCK_DGRAM, IPPROTO_IP);
+    int attacker_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (attacker_sock < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
         vTaskDelete(NULL);
@@ -86,12 +87,14 @@ void app_main(void) {
     };
     inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
 
-    exp_arg_t arg = { .sock = attacker_sock, .addr = attacker_addr};
+    exp_arg_t *arg = malloc(sizeof(exp_arg_t));
+    arg->sock = attacker_sock; 
+    arg->addr = attacker_addr;
     setup_experiment(arg);
 
 #ifdef CONFIG_EXAMPLE_IPV4
-    xTaskCreate(measurer_task, "measurer", 4096, (void *)&arg, 4, NULL);
-    xTaskCreate(experiment_runner_task, "experiment_runner", 4096, (void *)&arg, 5, NULL);
+    xTaskCreate(measurer_task, "measurer", 4096, (void *)arg, 4, NULL);
+    xTaskCreate(experiment_runner_task, "experiment_runner", 4096, (void *)arg, 5, NULL);
 #endif
 }
 
@@ -107,9 +110,12 @@ char send_msg(char* msg, int msg_socket, struct sockaddr_in* to_addr) {
 }
 
 int iperf_setup_tcp_server(struct sockaddr_in *listen_addr) {
+    int ret = -1;
+    int client_socket = -1;
+
     listen_addr->sin_family = AF_INET;
     listen_addr->sin_port = htons(IPERF_PORT);
-    inet_pton(AF_INET, ESP32_ADDRESS, (listen_addr.sin_addr));
+    inet_pton(AF_INET, ESP32_ADDRESS, &(listen_addr->sin_addr));
 
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     ESP_GOTO_ON_FALSE((listen_socket >= 0), ESP_FAIL, exit, TAG, "Unable to create socket: errno %d", errno);
@@ -128,7 +134,7 @@ int iperf_setup_tcp_server(struct sockaddr_in *listen_addr) {
 
     struct sockaddr_in remote_addr;
     socklen_t len = sizeof(remote_addr);
-    int client_socket = accept(listen_socket, (struct sockaddr *)&remote_addr, &len);
+    client_socket = accept(listen_socket, (struct sockaddr *)&remote_addr, &len);
     ESP_GOTO_ON_FALSE((client_socket >= 0), ESP_FAIL, exit, TAG, "Unable to accept connection: errno %d", errno);
     ESP_LOGI(TAG, "accept - ip: %s port: %d\n", inet_ntoa(remote_addr.sin_addr), htons(remote_addr.sin_port));
 
@@ -151,6 +157,7 @@ static void iperf_tcp_server(int attacker_sock) {
         int result = recvfrom(recv_socket, buffer, want_recv, 0, (struct sockaddr*)&listen_addr, &socklen);
         if (result < 0) {
             ESP_LOGE(TAG, "errno recv: %d", errno);
+            perror("erro");
         } else {
             /* exp_firewall_bandwidth += result; */
         }
@@ -183,9 +190,9 @@ void setup_experiment(exp_arg_t* arg) {
 
     // 3. Assign firewall function pointer to tree chosen by attacker
     firewall_config_t config = {
-        .stateless_eval = NULL;
-        .statefull_eval = NULL;
-        .mode = STATELESS;
+        .stateless_eval = NULL,
+        .statefull_eval = NULL,
+        .mode = STATELESS
     };
     switch (chosen_tree) {
         case '6':
@@ -225,30 +232,19 @@ void setup_experiment(exp_arg_t* arg) {
 }
 
 static void experiment_runner_task(void *pvParameters) {
-    exp_arg_t arg = (exp_arg_t)pvParameters;
-    iperf_tcp_server(arg.sock, 10);
+    exp_arg_t *arg = (exp_arg_t *)pvParameters;
+    iperf_tcp_server(arg->sock);
 
     // Signal to attacker that esp will restart
-    send_msg("complete", arg.sock, &arg.addr);
+    send_msg("complete", arg->sock, &arg->addr);
 
     // Close all sockets and reboot
     ESP_LOGI(TAG, "Experiment over, rebooting...");
-    shutdown(attacker_sock, SHUT_RD);
-    close(attacker_sock);
     esp_restart();
 }
 
 void measurer_task(void *pvParameters) {
-    UBaseType_t n_tasks = uxTaskGetNumberOfTasks();
-    TaskStatus_t* tasks = malloc(n_tasks * sizeof(TaskStatus_t));
-
-    unsigned long runtime = 0;
-    n_tasks = uxTaskGetSystemState(tasks, n_tasks, &runtime);
-    for (int i = 0; i < n_tasks; i++) {
-        printf("task name: %s\n", tasks[i].pcTaskName);
-    }
-
-    exp_arg_t arg = (exp_arg_t*)(pvParameters);
+    exp_arg_t arg = *(exp_arg_t*)(pvParameters);
 
     size_t stats_len = (uxTaskGetNumberOfTasks() * 50) + 100;
     char* runtime_stats = malloc(stats_len);
@@ -263,6 +259,13 @@ void measurer_task(void *pvParameters) {
         ESP_LOGE(TAG, "wifi task not found");
         return;
     }
+
+    struct sockaddr_in addr = {
+        .sin_family = AF_INET,
+        .sin_addr.s_addr = 0,   // we set this in inet_pton below
+        .sin_port = htons(ATTACKER_EXP_PORT)
+    };
+    inet_pton(AF_INET, ATTACKER_ADDRESS, &(addr.sin_addr));
 
     uint32_t cur = 0;
     uint32_t interval = 1;
@@ -300,7 +303,7 @@ void measurer_task(void *pvParameters) {
         exp_firewall_bandwidth = 0;
 
         // Sending experiment data...
-        int sent_bytes = sendto(listen_sock, runtime_stats, strlen(runtime_stats), 0, (struct sockaddr*) &arg.addr, sizeof(arg.addr));
+        int sent_bytes = sendto(arg.sock, runtime_stats, strlen(runtime_stats), 0, (struct sockaddr*) &addr, sizeof(addr));
         /*ESP_LOGI(TAG, "run_time_stats: %s", runtime_stats);*/
 
         // Put the thread to sleep and do the next iteration after `sleep_duration`
@@ -308,4 +311,6 @@ void measurer_task(void *pvParameters) {
         vTaskDelay(xDelay);
     }
     is_finish = true;
+
+    vTaskDelete(NULL);
 }
