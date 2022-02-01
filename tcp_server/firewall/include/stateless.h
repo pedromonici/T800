@@ -5,20 +5,20 @@ extern "C" {
 #endif
 
 #include "lwip/ip.h"
+#include "lwip/priv/tcp_priv.h"
+#include "lwip/tcp.h"
 
-err_t decision_tree_depth_6(struct pbuf *p);
+err_t decision_tree_depth_7(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
-err_t decision_tree_depth_7(struct pbuf *p);
+err_t decision_tree_depth_8(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
-err_t decision_tree_depth_8(struct pbuf *p);
+err_t decision_tree_depth_10(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
-err_t decision_tree_depth_9(struct pbuf *p);
+err_t decision_tree_depth_11(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
-err_t decision_tree_depth_10(struct pbuf *p);
+err_t decision_tree_depth_12(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
-err_t decision_tree_depth_11(struct pbuf *p);
-
-err_t decision_tree_depth_12(struct pbuf *p);
+err_t mlp(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
 #ifdef __cplusplus
 }

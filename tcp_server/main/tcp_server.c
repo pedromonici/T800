@@ -27,8 +27,8 @@
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
-#define ATTACKER_ADDRESS            "192.168.15.10" // Change this to your IP
-#define ESP32_ADDRESS               "192.168.15.20" // Change this to your IP
+#define ATTACKER_ADDRESS            "192.168.0.104" // Change this to your IP
+#define ESP32_ADDRESS               "192.168.0.19" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
@@ -136,7 +136,7 @@ int iperf_setup_tcp_server(struct sockaddr_in *listen_addr) {
     socklen_t len = sizeof(remote_addr);
     client_socket = accept(listen_socket, (struct sockaddr *)&remote_addr, &len);
     ESP_GOTO_ON_FALSE((client_socket >= 0), ESP_FAIL, exit, TAG, "Unable to accept connection: errno %d", errno);
-    ESP_LOGI(TAG, "accept - ip: %s port: %d\n", inet_ntoa(remote_addr.sin_addr), htons(remote_addr.sin_port));
+    ESP_LOGE(TAG, "accept - ip: %s port: %d\n", inet_ntoa(remote_addr.sin_addr), htons(remote_addr.sin_port));
 
     struct timeval timeout = { .tv_sec = 10, .tv_usec = 0 };
     setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
@@ -195,17 +195,11 @@ void setup_experiment(exp_arg_t* arg) {
         .mode = STATELESS
     };
     switch (chosen_tree) {
-        case '6':
-            config.stateless_eval = decision_tree_depth_6;
-            break;
         case '7':
             config.stateless_eval = decision_tree_depth_7;
             break;
         case '8':
             config.stateless_eval = decision_tree_depth_8;
-            break;
-        case '9':
-            config.stateless_eval = decision_tree_depth_9;
             break;
         case '0':
             config.stateless_eval = decision_tree_depth_10;
@@ -216,7 +210,10 @@ void setup_experiment(exp_arg_t* arg) {
         case '2':
             config.stateless_eval = decision_tree_depth_12;
             break;
-        case 'r':
+        case 'm':
+            config.stateless_eval = mlp;
+            break;
+        case 'r':  // statefull
             config.statefull_eval = validate_packet;
             config.mode = STATEFULL;
             break;

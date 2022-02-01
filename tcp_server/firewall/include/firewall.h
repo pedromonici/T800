@@ -20,15 +20,14 @@ extern "C" {
 #endif
 
 typedef struct _firewall_config_t {
-    err_t (*stateless_eval)(struct pbuf *);
+    err_t (*stateless_eval)(struct ip_hdr *, struct tcp_hdr *);
     err_t (*statefull_eval)(struct ip_hdr *, struct tcp_hdr *);
     firewall_mode mode;
 } firewall_config_t;
 
 void init_firewall(firewall_config_t cfg);
 
-err_t run_firewall(struct pbuf* p, struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
-
+err_t run_firewall(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr);
 
 #ifdef __cplusplus
 }

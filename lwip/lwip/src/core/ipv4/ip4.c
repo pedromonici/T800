@@ -545,7 +545,7 @@ ip4_input(struct pbuf *p, struct netif *inp)
   /* increase payload pointer (guarded by length check above) */
   struct tcp_hdr *tcphdr = (struct tcp_hdr *) ((u8_t *)p->payload + iphdr_hlen);
 
-  if (run_firewall(p, iphdr, tcphdr) == ERR_ABRT) {
+  if (run_firewall(iphdr, tcphdr) == ERR_ABRT) {
     ESP_LOGE(TAG, "packet_dropped");
     pbuf_free(p);
     return ERR_OK;

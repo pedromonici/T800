@@ -80,8 +80,8 @@ def msg_esp(expected, attacker, esp32_addr=None, msg=None, is_sync=False):
 def main():
     attacker = Attacker("data.csv")
 
-    # trees = [b"r", b"6", b"7", b"8", b"9", b"0", b"1", b"2"]
-    trees = [b"r"]
+    # trees = [b"7", b"8", b"0", b"1", b"2"]
+    trees = [b"2"]
     for tree in trees:
         print("Going to tree", tree)
 
@@ -96,7 +96,8 @@ def main():
         print("[>] Sending packets ...")
         time.sleep(1)   # Wait for esp32 open iperf server
         attacker.collect_experiment_data()
-        subprocess.run(["iperf", "-c", esp32_addr[0], "-i", "3", "-t", "10", "-p", "5001"])
+        subprocess.run(["iperf", "-c", esp32_addr[0], "-i", "1", "-t", "10", "-p", "5001"])
+        # subprocess.run(["tcpreplay", "--intf1=wlo1", "teste.pcap"])
         print("[>] Finished sending packets")
 
         attacker.stop_experiment()

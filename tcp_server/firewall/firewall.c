@@ -134,7 +134,7 @@ err_t firewall_statefull(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {
     return ERR_OK;
 }
 
-err_t run_firewall(struct pbuf* p, struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {
+err_t run_firewall(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {
     if (IPH_PROTO(iphdr) != IP_PROTO_TCP) {
         /* ESP_LOGI(TAG, "IS_NOT_A_TCP_PACKET"); */
         return ERR_OK;
@@ -144,7 +144,7 @@ err_t run_firewall(struct pbuf* p, struct ip_hdr *iphdr, struct tcp_hdr *tcphdr)
         case UNINITIALIZED:
             return ERR_OK;
         case STATELESS:
-            return config.stateless_eval(p);
+            return config.stateless_eval(iphdr, tcphdr);
         case STATEFULL:
             return firewall_statefull(iphdr, tcphdr);
     }
