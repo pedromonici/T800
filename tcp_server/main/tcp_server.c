@@ -135,6 +135,10 @@ int iperf_setup_tcp_server(struct sockaddr_in *listen_addr) {
     struct sockaddr_in remote_addr;
     socklen_t len = sizeof(remote_addr);
     client_socket = accept(listen_socket, (struct sockaddr *)&remote_addr, &len);
+    ESP_LOGW(TAG, "CLIENT_SOCKET: %d", client_socket);
+    if (client_socket == -1) {
+        perror("erro no accept");
+    }
     ESP_GOTO_ON_FALSE((client_socket >= 0), ESP_FAIL, exit, TAG, "Unable to accept connection: errno %d", errno);
     ESP_LOGE(TAG, "accept - ip: %s port: %d\n", inet_ntoa(remote_addr.sin_addr), htons(remote_addr.sin_port));
 
@@ -266,7 +270,7 @@ void measurer_task(void *pvParameters) {
 
     uint32_t cur = 0;
     uint32_t interval = 1;
-    int experiment_duration = 10;
+    int experiment_duration = 120;
     while (cur < experiment_duration) {
         // Gather freertos tasks data
         ESP_LOGI(TAG, "Sending stats...");
