@@ -96,8 +96,10 @@ def main():
         print("[>] Sending packets ...")
         time.sleep(1)   # Wait for esp32 open iperf server
         attacker.collect_experiment_data()
-        subprocess.run(["iperf", "-c", esp32_addr[0], "-i", "1", "-t", "10", "-p", "5001"])
-        # subprocess.run(["tcpreplay", "--intf1=wlo1", "teste.pcap"])
+        iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "120", "-p", "5001", "-b", "20000000pps"], start_new_session=True)
+        nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "--max-rate", "10"], start_new_session=True)
+        iperf.wait()
+        nmap.kill()
         print("[>] Finished sending packets")
 
         attacker.stop_experiment()
