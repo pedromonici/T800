@@ -302,6 +302,7 @@ void measurer_task(void *pvParameters) {
                
         // Reset network measuring after experiment.
         exp_firewall_bandwidth = 0;
+        ESP_LOGE(TAG, "packet_counter: %u", packet_counter);
 
         // Sending experiment data...
         int sent_bytes = sendto(arg.sock, runtime_stats, strlen(runtime_stats), 0, (struct sockaddr*) &addr, sizeof(addr));

@@ -124,7 +124,7 @@ err_t firewall_statefull(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {
         if (flow->is_malicious) {
             /* ESP_LOGE(TAG, "flow in blacklist"); */
             return ERR_ABRT;
-        } else if (config.statefull_eval(iphdr, tcphdr) == ERR_ABRT) {
+        } else if (config.statefull_eval(&flow->headers) == ERR_ABRT) {
             /* ESP_LOGE(TAG, "flow malicious"); */
             flow->is_malicious = true;
             return ERR_ABRT;

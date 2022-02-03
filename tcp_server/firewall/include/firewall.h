@@ -21,7 +21,7 @@ extern "C" {
 
 typedef struct _firewall_config_t {
     err_t (*stateless_eval)(struct ip_hdr *, struct tcp_hdr *);
-    err_t (*statefull_eval)(struct ip_hdr *, struct tcp_hdr *);
+    err_t (*statefull_eval)(queue_t *);
     firewall_mode mode;
 } firewall_config_t;
 
