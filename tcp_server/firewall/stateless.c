@@ -7,107 +7,108 @@
 static const char *TAG = "Firewall Stateless";
 
 err_t decision_tree_depth_7(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {
-    if (htons(IPH_LEN(iphdr)) < 64.5) {
-        if (TCPH_HDRLEN(tcphdr) < 38.0) {
-            if ((IPH_OFFSET(iphdr) & IP_DF) < 0.5) {
-                if ((TCPH_FLAGS(tcphdr) & TCP_SYN) < 0.5) {
-                    if (htons(IPH_LEN(iphdr)) < 40.5) {
-                        if (htons(IPH_TOS(iphdr)>>2) < 4.0) {
-                            if ((TCPH_FLAGS(tcphdr) & TCP_RST) < 0.5) {
-                                return ERR_ABRT;
-                            } else {
-                                return ERR_ABRT;
-                            }
-                        } else {
-                            if ((TCPH_FLAGS(tcphdr) & TCP_PSH) < 0.5) {
-                                return ERR_OK;
-                            } else {
-                                return ERR_OK;
-                            }
-                        }
-                    } else {
-                        if ((TCPH_FLAGS(tcphdr) & TCP_PSH) < 0.5) {
-                            return ERR_OK;
-                        } else {
-                            return ERR_OK;
-                        }
-                    }
-                } else {
-                    if (TCPH_HDRLEN(tcphdr) < 22.0) {
-                        if (htons(IPH_ID(iphdr)) < 54313.5) {
-                            if (htons(IPH_TOS(iphdr)>>2) < 1.5) {
-                                return ERR_OK;
-                            } else {
-                                return ERR_OK;
-                            }
-                        } else {
-                            if (htons(IPH_ID(iphdr)) < 54323.0) {
-                                return ERR_ABRT;
-                            } else {
-                                return ERR_OK;
-                            }
-                        }
-                    } else {
-                        if ((TCPH_FLAGS(tcphdr) & TCP_ACK) < 0.5) {
-                            if (htons(IPH_TOS(iphdr)>>2) < 1.5) {
-                                return ERR_ABRT;
-                            } else {
-                                return ERR_OK;
-                            }
-                        } else {
-                            return ERR_OK;
-                        }
-                    }
-                }
-            } else {
-                return ERR_OK;
-            }
-        } else {
-            if (htons(IPH_ID(iphdr)) < 5.5) {
-                return ERR_OK;
-            } else {
-                if (TCPH_HDRLEN(tcphdr) < 42.0) {
-                    if (htons(IPH_TOS(iphdr)>>2) < 1.5) {
-                        if ((TCPH_FLAGS(tcphdr) & TCP_ACK) < 0.5) {
-                            if ((IPH_OFFSET(iphdr) & IP_DF) < 0.5) {
-                                return ERR_OK;
-                            } else {
-                                return ERR_ABRT;
-                            }
-                        } else {
-                            return ERR_OK;
-                        }
-                    } else {
-                        return ERR_OK;
-                    }
-                } else {
-                    if ((IPH_OFFSET(iphdr) & IP_DF) < 0.5) {
-                        return ERR_OK;
-                    } else {
-                        if (htons(IPH_TOS(iphdr)>>2) < 4.0) {
-                            if ((TCPH_FLAGS(tcphdr) & TCP_CWR) < 0.5) {
-                                return ERR_ABRT;
-                            } else {
-                                return ERR_OK;
-                            }
-                        } else {
-                            if (htons(IPH_ID(iphdr)) < 1684.5) {
-                                return ERR_OK;
-                            } else {
-                                return ERR_OK;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        if (TCPH_HDRLEN(tcphdr) < 26.0) {
-            return ERR_OK;
-        } else {
-            return ERR_OK;
-        }
-    }
+    return ERR_OK;
+    /* if (htons(IPH_LEN(iphdr)) < 64.5) { */
+    /*     if (TCPH_HDRLEN(tcphdr) < 38.0) { */
+    /*         if ((IPH_OFFSET(iphdr) & IP_DF) < 0.5) { */
+    /*             if ((TCPH_FLAGS(tcphdr) & TCP_SYN) < 0.5) { */
+    /*                 if (htons(IPH_LEN(iphdr)) < 40.5) { */
+    /*                     if (htons(IPH_TOS(iphdr)>>2) < 4.0) { */
+    /*                         if ((TCPH_FLAGS(tcphdr) & TCP_RST) < 0.5) { */
+    /*                             return ERR_ABRT; */
+    /*                         } else { */
+    /*                             return ERR_ABRT; */
+    /*                         } */
+    /*                     } else { */
+    /*                         if ((TCPH_FLAGS(tcphdr) & TCP_PSH) < 0.5) { */
+    /*                             return ERR_OK; */
+    /*                         } else { */
+    /*                             return ERR_OK; */
+    /*                         } */
+    /*                     } */
+    /*                 } else { */
+    /*                     if ((TCPH_FLAGS(tcphdr) & TCP_PSH) < 0.5) { */
+    /*                         return ERR_OK; */
+    /*                     } else { */
+    /*                         return ERR_OK; */
+    /*                     } */
+    /*                 } */
+    /*             } else { */
+    /*                 if (TCPH_HDRLEN(tcphdr) < 22.0) { */
+    /*                     if (htons(IPH_ID(iphdr)) < 54313.5) { */
+    /*                         if (htons(IPH_TOS(iphdr)>>2) < 1.5) { */
+    /*                             return ERR_OK; */
+    /*                         } else { */
+    /*                             return ERR_OK; */
+    /*                         } */
+    /*                     } else { */
+    /*                         if (htons(IPH_ID(iphdr)) < 54323.0) { */
+    /*                             return ERR_ABRT; */
+    /*                         } else { */
+    /*                             return ERR_OK; */
+    /*                         } */
+    /*                     } */
+    /*                 } else { */
+    /*                     if ((TCPH_FLAGS(tcphdr) & TCP_ACK) < 0.5) { */
+    /*                         if (htons(IPH_TOS(iphdr)>>2) < 1.5) { */
+    /*                             return ERR_ABRT; */
+    /*                         } else { */
+    /*                             return ERR_OK; */
+    /*                         } */
+    /*                     } else { */
+    /*                         return ERR_OK; */
+    /*                     } */
+    /*                 } */
+    /*             } */
+    /*         } else { */
+    /*             return ERR_OK; */
+    /*         } */
+    /*     } else { */
+    /*         if (htons(IPH_ID(iphdr)) < 5.5) { */
+    /*             return ERR_OK; */
+    /*         } else { */
+    /*             if (TCPH_HDRLEN(tcphdr) < 42.0) { */
+    /*                 if (htons(IPH_TOS(iphdr)>>2) < 1.5) { */
+    /*                     if ((TCPH_FLAGS(tcphdr) & TCP_ACK) < 0.5) { */
+    /*                         if ((IPH_OFFSET(iphdr) & IP_DF) < 0.5) { */
+    /*                             return ERR_OK; */
+    /*                         } else { */
+    /*                             return ERR_ABRT; */
+    /*                         } */
+    /*                     } else { */
+    /*                         return ERR_OK; */
+    /*                     } */
+    /*                 } else { */
+    /*                     return ERR_OK; */
+    /*                 } */
+    /*             } else { */
+    /*                 if ((IPH_OFFSET(iphdr) & IP_DF) < 0.5) { */
+    /*                     return ERR_OK; */
+    /*                 } else { */
+    /*                     if (htons(IPH_TOS(iphdr)>>2) < 4.0) { */
+    /*                         if ((TCPH_FLAGS(tcphdr) & TCP_CWR) < 0.5) { */
+    /*                             return ERR_ABRT; */
+    /*                         } else { */
+    /*                             return ERR_OK; */
+    /*                         } */
+    /*                     } else { */
+    /*                         if (htons(IPH_ID(iphdr)) < 1684.5) { */
+    /*                             return ERR_OK; */
+    /*                         } else { */
+    /*                             return ERR_OK; */
+    /*                         } */
+    /*                     } */
+    /*                 } */
+    /*             } */
+    /*         } */
+    /*     } */
+    /* } else { */
+    /*     if (TCPH_HDRLEN(tcphdr) < 26.0) { */
+    /*         return ERR_OK; */
+    /*     } else { */
+    /*         return ERR_OK; */
+    /*     } */
+    /* } */
 }
 
 err_t decision_tree_depth_8(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {

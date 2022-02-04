@@ -3,6 +3,7 @@
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
+#include <esp_heap_caps.h>
 
 #include "include/model.h"
 #include "include/stateless.h"
@@ -16,7 +17,7 @@ const tflite::Model* model = ::tflite::GetModel(g_model);
 
 tflite::AllOpsResolver resolver;
 
-const int tensor_arena_size = 2 * 44368;
+const int tensor_arena_size = 5 * 1024;
 uint8_t tensor_arena[tensor_arena_size];
 
 tflite::MicroInterpreter interpreter(model, resolver, tensor_arena,
@@ -25,14 +26,15 @@ tflite::MicroInterpreter interpreter(model, resolver, tensor_arena,
 TfLiteStatus allocate_status = interpreter.AllocateTensors();
 
 err_t validate_packet(queue_t *q) {
-    if (allocate_status != kTfLiteOk) {
-        TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
-        return ERR_OK;
-    }
-    TfLiteTensor* input;
+    /* if (allocate_status != kTfLiteOk) { */
+    /*     TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed"); */
+    /*     return ERR_OK; */
+    /* } */
     /* ESP_LOGW(TAG, "DIM_SIZE: %d DIM_DATA: %d", input->dims->size, input->dims->data[0]); */
+    TfLiteTensor* input = interpreter.input(0);
     for (int i = 0; i < MAX_QUARANTINE_SIZE; i++) {
-        input = interpreter.input(i);
+        /* TfLiteTensor* input = &interpreter.input(0)[i]; */
+        ESP_LOGE(TAG, "here");
         ESP_LOGW(TAG, "DIM_SIZE: %d DIM_DATA: %d", input->dims->size, input->dims->data[0]);
         conn_headers_t *headers = &q->element[i].data.headers;
         struct ip_hdr *iphdr = headers->iphdr;
@@ -54,6 +56,7 @@ err_t validate_packet(queue_t *q) {
         input->data.f[13] = (TCPH_FLAGS(tcphdr) & TCP_CWR);
         input->data.f[14] = htons(tcphdr->wnd);
         input->data.f[15] = htons(tcphdr->urgp);
+        ESP_LOGE(TAG, "now here");
     }
 
     TfLiteStatus invoke_status = interpreter.Invoke();
@@ -101,3 +104,4 @@ err_t mlp(struct ip_hdr *iphdr, struct tcp_hdr *tcphdr) {
 
   return value < value2 ? ERR_ABRT : ERR_OK;
 }
+
