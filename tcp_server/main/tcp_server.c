@@ -247,7 +247,7 @@ static void experiment_runner_task(void *pvParameters) {
 void measurer_task(void *pvParameters) {
     exp_arg_t arg = *(exp_arg_t*)(pvParameters);
 
-    size_t stats_len = (uxTaskGetNumberOfTasks() * 50) + 100;
+    size_t stats_len = (uxTaskGetNumberOfTasks() * 100) + 500;
     char* runtime_stats = malloc(stats_len);
     if (runtime_stats == NULL) {
         ESP_LOGE(TAG, "malloc error sending_stats");
@@ -270,7 +270,7 @@ void measurer_task(void *pvParameters) {
 
     uint32_t cur = 0;
     uint32_t interval = 1;
-    int experiment_duration = 120;
+    int experiment_duration = 180;
     while (cur < experiment_duration) {
         // Gather freertos tasks data
         ESP_LOGI(TAG, "Sending stats...");

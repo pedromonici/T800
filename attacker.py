@@ -59,6 +59,7 @@ class Attacker():
     def stop_experiment(self):
         self.experiment_running = False
         self.experiment.join()
+        self.header_written = False
         print(f"[-] Stopped collecting - closed file '{self.fname}'")
 
 
@@ -81,7 +82,9 @@ def main():
     attacker = Attacker("data.csv")
 
     # trees = [b"7", b"8", b"0", b"1", b"2"]
-    trees = [b"2"]
+    # trees = [b"0", b"2", b"m"]
+    # trees = [b"2", b"2", b"2", b"2", b"2", b"2", b"2", b"2", b"2", b"2"]
+    trees = [b"m", b"m", b"m", b"m", b"m", b"m", b"m", b"m", b"m", b"m"]
     for tree in trees:
         print("Going to tree", tree)
 
@@ -94,10 +97,12 @@ def main():
         print(f"[+] ESP32 assigned tree {tree}")
 
         print("[>] Sending packets ...")
-        time.sleep(1)   # Wait for esp32 open iperf server
         attacker.collect_experiment_data()
-        iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "120", "-p", "5001", "-b", "20000000pps"], start_new_session=True)
-        nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "--max-rate", "10"], start_new_session=True)
+        time.sleep(2)   # Wait for esp32 open iperf server
+        # subprocess.run(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", "16000000pps"]);
+        # subprocess.run(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "aggressive"])
+        iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", "16000000pps"], start_new_session=True)
+        nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "normal"], start_new_session=True)
         iperf.wait()
         nmap.kill()
         print("[>] Finished sending packets")
