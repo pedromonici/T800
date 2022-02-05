@@ -25,7 +25,7 @@ idf.py -p <YOUR_ESP32_PORT> flash
 
 Now, we can execute the experiment:
 1. run `sudo python attacker.py` in one terminal
-2. run `idf.py monitor` on another terminal, in parallel right after the python script
+2. run `idf.py -p <YOUR_ESP32_PORT> monitor` on another terminal, in parallel right after the python script
 
 After the experiment, a `data.csv` file will be generated in this folder with the
 data collected during the experiment.
