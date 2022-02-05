@@ -10,6 +10,7 @@ get the IP of the device in your network. Then, build and flash the experiment
 onto your ESP32:
 1. Change `ATTACKER_ADDRESS` in line 30 of `/tcp_server/main/tcp_server.c` to your IP
 2. Change `ESP32_ADDRESS` in line 31 of `/tcp_server/main/tcp_server.c` to esp32 IP
+3. Run `idf.py menuconfig` > `Example Connect Configuration` > Set your `wifi ssid` and `password`
 
 ```bash
 get_idf
