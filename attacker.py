@@ -101,8 +101,8 @@ def main():
         time.sleep(2)   # Wait for esp32 open iperf server
         # subprocess.run(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", "16000000pps"]);
         # subprocess.run(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "aggressive"])
-        iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", "16000000pps"], start_new_session=True)
-        nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "normal"], start_new_session=True)
+        iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", "8000000pps"], start_new_session=True)
+        nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True)
         iperf.wait()
         nmap.kill()
         print("[>] Finished sending packets")
