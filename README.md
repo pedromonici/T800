@@ -14,9 +14,9 @@ onto your ESP32:
 
 ```bash
 get_idf
-cp -r ./tcp_server/firewall $IDF_PATH/components/
-cp -r ./tcp_server/tflite/tflite-lib $IDF_PATH/components/
-cp -r ./tcp_server/tflite/esp-nn $IDF_PATH/components/
+cp -r ./firewall $IDF_PATH/components/
+cp -r ./tflite-lib $IDF_PATH/components/
+cp -r ./esp-nn $IDF_PATH/components/
 cp lwip/CMakeLists.txt $IDF_PATH/components/lwip/CMakeLists.txt
 cp lwip/lwip/src/core/ipv4/ip4.c $IDF_PATH/components/lwip/lwip/src/core/ipv4/ip4.c
 cp lwip/lwip/src/include/lwip/ip4.h $IDF_PATH/components/lwip/lwip/src/include/lwip/ip4.h

@@ -61,6 +61,7 @@
 
 #include "firewall.h"
 uint32_t exp_firewall_bandwidth = 0;
+uint32_t packet_counter = 0;
 
 static const char *TAG = "ip4.c";
 
@@ -541,6 +542,7 @@ ip4_input(struct pbuf *p, struct netif *inp)
 
   // Getting network bandwidth
   exp_firewall_bandwidth += p->len;
+  packet_counter++;
   /* ESP_LOGI(TAG, "actual_len: %d", exp_firewall_bandwidth); */
   /* increase payload pointer (guarded by length check above) */
   struct tcp_hdr *tcphdr = (struct tcp_hdr *) ((u8_t *)p->payload + iphdr_hlen);
