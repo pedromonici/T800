@@ -84,7 +84,7 @@ def main():
     trees = [b"0", b"2", b"m"]
     for tree in trees:
         for pkt_count in ["8000000pps", "16000000pps"]:
-            for nmap_intensity in ["normal", "agressive", "insane"]:
+            for nmap_intensity in ["normal", "aggressive", "insane"]:
                 print("Going to tree", tree)
 
                 esp32_addr = msg_esp(b"start", attacker, is_sync=True)
