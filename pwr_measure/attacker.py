@@ -109,7 +109,7 @@ def main():
         for pkt_count in ["8000000pps", "16000000pps"]:
             for nmap_intensity in ["normal", "aggressive", "insane"]:
 
-                test_case = str(tree)+'_'+str(pkt_count)+'_'+str(nmap_intensity)
+                test_case = tree.decode()+'_'+str(pkt_count)+'_'+str(nmap_intensity)
                 test_case.replace('\'',"").replace('"',"")
                 file_name = path + test_case + ".csv"
 
