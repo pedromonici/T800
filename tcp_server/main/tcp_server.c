@@ -28,8 +28,8 @@
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
-#define ATTACKER_ADDRESS            "192.168.0.104" // Change this to your IP
-#define ESP32_ADDRESS               "192.168.0.19" // Change this to your IP
+#define ATTACKER_ADDRESS            "192.168.15.15" // Change this to your IP
+#define ESP32_ADDRESS               "192.168.15.22" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
@@ -285,7 +285,7 @@ void measurer_task(void *pvParameters) {
 
     uint32_t cur = 0;
     uint32_t interval = 1;
-    int experiment_duration = 10;
+    int experiment_duration = 180;
     while (cur < experiment_duration) {
         // Gather freertos tasks data
         ESP_LOGI(TAG, "Sending stats...");
