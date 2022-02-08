@@ -102,8 +102,6 @@ def main():
     
     path = "./output/"
 
-    attacker = Attacker("data.csv")
-
     trees = [b"0", b"2", b"m"]
     for tree in trees:
         for pkt_count in ["8000000pps", "16000000pps"]:
@@ -113,12 +111,9 @@ def main():
                 test_case.replace('\'',"").replace('"',"")
                 file_name = path + test_case + ".csv"
 
-                ser = serial.Serial(port, baud_rate)
+                attacker = Attacker("data_"+test_case+".csv")
 
-                # Thread for serial monitor in each test case
-                stop_thread = False
-                monitor = threading.Thread(target=serial_monitor, args=(file_name, ser, lambda: stop_thread, ))
-                monitor.start()
+                ser = serial.Serial(port, baud_rate)
 
                 print("Going to tree", tree)
 
@@ -129,6 +124,11 @@ def main():
                 esp32_addr = msg_esp(b"assigned", attacker, esp32_addr, tree)
 
                 print(f"[+] ESP32 assigned tree {tree}")
+
+                # Thread for serial monitor in each test case
+                stop_thread = False
+                monitor = threading.Thread(target=serial_monitor, args=(file_name, ser, lambda: stop_thread, ))
+                monitor.start()
 
                 print("[>] Sending packets ...")
                 attacker.collect_experiment_data()
@@ -151,7 +151,7 @@ def main():
                 stop_thread = True
                 monitor.join()
                 ser.close()
-                
+                del attacker
                 time.sleep(5)
 
 if __name__ == "__main__":
