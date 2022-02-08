@@ -78,7 +78,7 @@ def msg_esp(expected, attacker, esp32_addr=None, msg=None, is_sync=False):
 
     return esp32_addr
 
-def serial_monitor(file_name, ser):
+def serial_monitor(file_name, ser, stop):
     t = threading.currentThread()
     serial_msg = ""
     print(">> Monitoring test case: ", file_name)
@@ -90,6 +90,10 @@ def serial_monitor(file_name, ser):
                 serial_msg = ""
             else:
                 serial_msg += character
+
+            if stop():
+                break
+
     print (">> Stopping monitoring")
 
 def main():
@@ -112,7 +116,8 @@ def main():
                 ser = serial.Serial(port, baud_rate)
 
                 # Thread for serial monitor in each test case
-                monitor = threading.Thread(target=serial_monitor, args=(file_name, ser, ))
+                stop_thread = False
+                monitor = threading.Thread(target=serial_monitor, args=(file_name, ser, lambda: stop_thread, ))
                 monitor.start()
 
                 print("Going to tree", tree)
@@ -143,6 +148,7 @@ def main():
                 print("[+] Experiment data saved in file")
                 
                 # stop serial monitor thread and serial
+                stop_thread = True
                 monitor.join()
                 ser.close()
                 
