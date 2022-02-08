@@ -28,8 +28,8 @@
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
-#define ATTACKER_ADDRESS            "192.168.15.15" // Change this to your IP
-#define ESP32_ADDRESS               "192.168.15.22" // Change this to your IP
+#define ATTACKER_ADDRESS            "192.168.0.104" // Change this to your IP
+#define ESP32_ADDRESS               "192.168.0.19" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
@@ -76,6 +76,10 @@ void app_main(void) {
         vTaskDelete(NULL);
     }
 
+    struct timeval timeout = { 0 };
+    timeout.tv_sec = 3;
+    setsockopt(attacker_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
     // 3. Binding our UDP socket so we can receive incoming packets
     if (bind(attacker_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) != 0) {
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
@@ -105,7 +109,7 @@ char send_msg(char* msg, int msg_socket, struct sockaddr_in* to_addr) {
     while (answer == '\0') {
         int read_bytes = sendto(msg_socket, msg, strlen(msg), 0, (struct sockaddr*) to_addr, sizeof(struct sockaddr_in));
         ESP_LOGI(TAG, "sent %s", msg);
-        recv(msg_socket, &answer, sizeof(answer), MSG_DONTWAIT);
+        recv(msg_socket, &answer, sizeof(answer), 0);
     }
 
     return answer;
@@ -281,7 +285,7 @@ void measurer_task(void *pvParameters) {
 
     uint32_t cur = 0;
     uint32_t interval = 1;
-    int experiment_duration = 180;
+    int experiment_duration = 10;
     while (cur < experiment_duration) {
         // Gather freertos tasks data
         ESP_LOGI(TAG, "Sending stats...");
