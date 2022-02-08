@@ -53,6 +53,7 @@ extern "C" {
 #endif
 
 extern uint32_t exp_firewall_bandwidth;
+extern uint32_t packet_counter;
 
 #ifdef LWIP_HOOK_IP4_ROUTE_SRC
 #define LWIP_IPV4_SRC_ROUTING   1

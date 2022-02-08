@@ -81,42 +81,38 @@ def msg_esp(expected, attacker, esp32_addr=None, msg=None, is_sync=False):
 def main():
     attacker = Attacker("data.csv")
 
-    # trees = [b"7", b"8", b"0", b"1", b"2"]
-    # trees = [b"0", b"2", b"m"]
-    # trees = [b"2", b"2", b"2", b"2", b"2", b"2", b"2", b"2", b"2", b"2"]
-    trees = [b"m", b"m", b"m", b"m", b"m", b"m", b"m", b"m", b"m", b"m"]
+    trees = [b"0", b"2", b"m"]
     for tree in trees:
-        print("Going to tree", tree)
+        for pkt_count in ["8000000pps", "16000000pps"]:
+            for nmap_intensity in ["normal", "aggressive", "insane"]:
+                print("Going to tree", tree)
 
-        esp32_addr = msg_esp(b"start", attacker, is_sync=True)
+                esp32_addr = msg_esp(b"start", attacker, is_sync=True)
 
-        print("[+] Starting experiment:")
+                print("[+] Starting experiment:")
 
-        esp32_addr = msg_esp(b"assigned", attacker, esp32_addr, tree)
+                esp32_addr = msg_esp(b"assigned", attacker, esp32_addr, tree)
 
-        print(f"[+] ESP32 assigned tree {tree}")
+                print(f"[+] ESP32 assigned tree {tree}")
 
-        print("[>] Sending packets ...")
-        attacker.collect_experiment_data()
-        time.sleep(2)   # Wait for esp32 open iperf server
-        # subprocess.run(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", "16000000pps"]);
-        # subprocess.run(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "aggressive"])
-        iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", "8000000pps"], start_new_session=True)
-        nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True)
-        iperf.wait()
-        nmap.kill()
-        print("[>] Finished sending packets")
+                print("[>] Sending packets ...")
+                attacker.collect_experiment_data()
+                time.sleep(2)   # Wait for esp32 open iperf server
+                iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", pkt_count], start_new_session=True)
+                nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", nmap_intensity], start_new_session=True)
+                iperf.wait()
+                nmap.kill()
+                print("[>] Finished sending packets")
 
-        attacker.stop_experiment()
+                attacker.stop_experiment()
 
-        # Receiving experiment results
-        msg_esp(b"complete", attacker, esp32_addr, b"D")
+                # Receiving experiment results
+                msg_esp(b"complete", attacker, esp32_addr, b"D")
 
-        print("[+] ESP32 experiment complete, moving to next index")
-        print("[+] Experiment data saved in file")
+                print("[+] ESP32 experiment complete, moving to next index")
+                print("[+] Experiment data saved in file")
 
-        time.sleep(5)
-
+                time.sleep(5)
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,6 @@
 
 PROJECT_NAME := tcp_server
 
-EXTRA_COMPONENT_DIRS = $(IDF_PATH)/examples/common_components/protocol_examples_common /home/pedromonici/USP/IC/tcp_server/firewall /home/pedromonici/USP/IC/tcp_server/tflite
+EXTRA_COMPONENT_DIRS = $(IDF_PATH)/examples/common_components/protocol_examples_common 
 
 include $(IDF_PATH)/make/project.mk

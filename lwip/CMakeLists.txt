@@ -4,11 +4,11 @@ set(include_dirs
     lwip/src/include
     port/esp32/include
     port/esp32/include/arch
-    /home/pedromonici/USP/IC/tcp_server/firewall/include
+    $ENV{IDF_PATH}/components/firewall/include
     )
 
 set(srcs
-    "/home/pedromonici/USP/IC/tcp_server/firewall/firewall.c"
+    "$ENV{IDF_PATH}/components/firewall/firewall.c"
     "apps/sntp/sntp.c"
     "lwip/src/api/api_lib.c"
     "lwip/src/api/api_msg.c"
