@@ -78,31 +78,25 @@ def msg_esp(expected, attacker, esp32_addr=None, msg=None, is_sync=False):
 
     return esp32_addr
 
-def serial_monitor(arg):
+def serial_monitor(file_name, ser):
     t = threading.currentThread()
-    while getattr(t, "do_run", True):
-        port = "/dev/ttyACM0"
-        baud_rate = 115200
-        path = "./output/"
-        test_case = arg
-        file_name = path + test_case + ".csv"
-
-        ser = serial.Serial(port, baud_rate)
-        serial_msg = ""
-        print(">> Monitoring test case: ", test_case)
-        with open(file_name, "w") as f:
-            while True:
-                character = ser.read().decode()
-
-                if character == "\n":
-                    f.write(serial_msg+character)
-                    serial_msg = ""
-                else:
-                    serial_msg += character
-    ser.close()
+    serial_msg = ""
+    print(">> Monitoring test case: ", file_name)
+    with open(file_name, "w") as f:
+        while True:
+            character = ser.read().decode()
+            if character == "\n":
+                f.write(serial_msg+character)
+                serial_msg = ""
+            else:
+                serial_msg += character
     print (">> Stopping monitoring")
 
 def main():
+    port = "/dev/ttyACM0"
+    baud_rate = 115200
+    
+    path = "./output/"
 
     attacker = Attacker("data.csv")
 
@@ -112,10 +106,13 @@ def main():
             for nmap_intensity in ["normal", "aggressive", "insane"]:
 
                 test_case = str(tree)+'_'+str(pkt_count)+'_'+str(nmap_intensity)
-                test_case.replace("'","").replace("\"","")
+                test_case.replace('\'',"").replace('"',"")
+                file_name = path + test_case + ".csv"
+
+                ser = serial.Serial(port, baud_rate)
 
                 # Thread for serial monitor in each test case
-                monitor = threading.Thread(target=serial_monitor, args=(test_case,))
+                monitor = threading.Thread(target=serial_monitor, args=(file_name, ser, ))
                 monitor.start()
 
                 print("Going to tree", tree)
@@ -144,8 +141,10 @@ def main():
 
                 print("[+] ESP32 experiment complete, moving to next index")
                 print("[+] Experiment data saved in file")
-
-                monitor.do_run = False
+                
+                # stop serial monitor thread and serial
+                monitor.join()
+                ser.close()
                 
                 time.sleep(5)
 
