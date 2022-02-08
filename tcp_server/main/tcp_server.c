@@ -28,12 +28,12 @@
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
-#define ATTACKER_ADDRESS            "192.168.0.104" // Change this to your IP
-#define ESP32_ADDRESS               "192.168.0.19" // Change this to your IP
+#define ATTACKER_ADDRESS            "192.168.15.15" // Change this to your IP
+#define ESP32_ADDRESS               "192.168.15.22" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
-#define ENERGY_GPIO                 33      // PIN for energy monitoring
+#define ENERGY_GPIO                 5      // PIN for energy monitoring GPIO5
 
 static const char *TAG = "Experiment Server";
 
