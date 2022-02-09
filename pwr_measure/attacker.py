@@ -23,7 +23,7 @@ class Attacker():
         self.experiment_running = False
 
     def _collect(self, fname):
-        data_file = open(fname, "a+")
+        data_file = open("./data/" + fname, "a+")
         period = 0
         while self.experiment_running:
             try:
