@@ -28,7 +28,7 @@ Now, we can execute the experiment:
 1. run `sudo python attacker.py` in one terminal
 2. run `idf.py -p <YOUR_ESP32_PORT> monitor` on another terminal, in parallel right after the python script
 
-During the experiment, the pin `D33` will be 0 when the experiment isn't running and
+During the experiment, the pin `D5` will be 0 when the experiment isn't running and
 1 during it's duration.
 
 After the experiment, a `data.csv` file will be generated in this folder with the

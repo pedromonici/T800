@@ -28,12 +28,12 @@
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
-#define ATTACKER_ADDRESS            "192.168.0.104" // Change this to your IP
-#define ESP32_ADDRESS               "192.168.0.19" // Change this to your IP
+#define ATTACKER_ADDRESS            "192.168.15.15" // Change this to your IP
+#define ESP32_ADDRESS               "192.168.15.22" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
-#define ENERGY_GPIO                 33      // PIN for energy monitoring
+#define ENERGY_GPIO                 5      // PIN for energy monitoring GPIO5
 
 static const char *TAG = "Experiment Server";
 
@@ -76,6 +76,10 @@ void app_main(void) {
         vTaskDelete(NULL);
     }
 
+    struct timeval timeout = { 0 };
+    timeout.tv_sec = 3;
+    setsockopt(attacker_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
     // 3. Binding our UDP socket so we can receive incoming packets
     if (bind(attacker_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) != 0) {
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
@@ -88,7 +92,7 @@ void app_main(void) {
         .sin_port = htons(ATTACKER_PORT)
     };
     inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
-
+    
     exp_arg_t *arg = malloc(sizeof(exp_arg_t));
     arg->sock = attacker_sock; 
     arg->addr = attacker_addr;
