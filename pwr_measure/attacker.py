@@ -23,7 +23,7 @@ class Attacker():
         self.experiment_running = False
 
     def _collect(self, fname):
-        data_file = open(fname, "a+")
+        data_file = open("./data/" + fname, "a+")
         period = 0
         while self.experiment_running:
             try:
@@ -102,10 +102,10 @@ def main():
     
     path = "./output/"
 
-    trees = [b"0", b"2", b"m"]
+    trees = [b"m"] #[b"0", b"2", b"m"]
     for tree in trees:
-        for pkt_count in ["8000000pps", "16000000pps"]:
-            for nmap_intensity in ["normal", "aggressive", "insane"]:
+        for pkt_count in ["16000000pps"]: #["16000000pps", "8000000pps"]:
+            for nmap_intensity in ["aggressive"]: #"normal", "insane", "aggressive"
 
                 test_case = tree.decode()+'_'+str(pkt_count)+'_'+str(nmap_intensity)
                 test_case.replace('\'',"").replace('"',"")
