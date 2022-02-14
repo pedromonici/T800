@@ -1,4 +1,4 @@
-period,experiment_runn,measurer,IDLE,tiT,ipc0,Tmr Svc,ipc1,sys_evt,wifi,esp_timer,Heap,Stack,Mbps,main
+period,experiment_runn,measurer,IDLE,tiT,ipc0,TmrSvc,ipc1,sys_evt,wifi,esp_timer,Heap,Stack,Mbps,main
 0,470,715,4373649,9000,1881,18,19508,24533,703757,3713,206992,4152,0.01,99230
 1,4171,11592,4547280,13630,1881,18,19508,24533,717193,5058,206992,4152,0.00,99230
 2,4171,14205,5531949,14861,1881,18,19508,24533,730446,6432,206992,4152,0.00,99230
