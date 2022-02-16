@@ -29,7 +29,6 @@
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
 #define ATTACKER_ADDRESS            "192.168.15.15" // Change this to your IP
-#define ESP32_ADDRESS               "192.168.15.22" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
@@ -121,7 +120,7 @@ int iperf_setup_tcp_server(struct sockaddr_in *listen_addr) {
 
     listen_addr->sin_family = AF_INET;
     listen_addr->sin_port = htons(IPERF_PORT);
-    inet_pton(AF_INET, ESP32_ADDRESS, &(listen_addr->sin_addr));
+    inet_pton(AF_INET, INADDR_ANY, &(listen_addr->sin_addr));
 
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     ESP_GOTO_ON_FALSE((listen_socket >= 0), ESP_FAIL, exit, TAG, "Unable to create socket: errno %d", errno);
