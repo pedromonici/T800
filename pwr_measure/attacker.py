@@ -102,57 +102,58 @@ def main():
     
     path = "./output/"
 
-    trees = [b"m"] #[b"0", b"2", b"m"]
+    trees = [b"m"] #[b"0", b"2", b"m", b"n"]
     for tree in trees:
         for pkt_count in ["16000000pps"]: #["16000000pps", "8000000pps"]:
-            for nmap_intensity in ["aggressive"]: #"normal", "insane", "aggressive"
+            test_case = tree.decode()+'_'+str(pkt_count)+'_'+str("insane")
+            test_case.replace('\'',"").replace('"',"")
+            file_name = path + test_case + ".csv"
 
-                test_case = tree.decode()+'_'+str(pkt_count)+'_'+str(nmap_intensity)
-                test_case.replace('\'',"").replace('"',"")
-                file_name = path + test_case + ".csv"
+            attacker = Attacker("data_"+test_case+".csv")
 
-                attacker = Attacker("data_"+test_case+".csv")
+            ser = serial.Serial(port, baud_rate)
 
-                ser = serial.Serial(port, baud_rate)
+            print("Going to tree", tree)
 
-                print("Going to tree", tree)
+            esp32_addr = msg_esp(b"start", attacker, is_sync=True)
 
-                esp32_addr = msg_esp(b"start", attacker, is_sync=True)
+            print("[+] Starting experiment:")
 
-                print("[+] Starting experiment:")
+            esp32_addr = msg_esp(b"assigned", attacker, esp32_addr, tree)
 
-                esp32_addr = msg_esp(b"assigned", attacker, esp32_addr, tree)
+            print(f"[+] ESP32 assigned tree {tree}")
 
-                print(f"[+] ESP32 assigned tree {tree}")
+            # Thread for serial monitor in each test case
+            stop_thread = False
+            monitor = threading.Thread(target=serial_monitor, args=(file_name, ser, lambda: stop_thread, ))
+            monitor.start()
 
-                # Thread for serial monitor in each test case
-                stop_thread = False
-                monitor = threading.Thread(target=serial_monitor, args=(file_name, ser, lambda: stop_thread, ))
-                monitor.start()
+            print("[>] Sending packets ...")
+            attacker.collect_experiment_data()
+            time.sleep(2)   # Wait for esp32 open iperf server
+            iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", pkt_count], start_new_session=True)
+            nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True) #always insane
+            while iperf.poll() == None:
+                if nmap.poll() != None:
+                    nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True)
+            iperf.wait()
+            nmap.kill()
+            print("[>] Finished sending packets")
 
-                print("[>] Sending packets ...")
-                attacker.collect_experiment_data()
-                time.sleep(2)   # Wait for esp32 open iperf server
-                iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", pkt_count], start_new_session=True)
-                nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", nmap_intensity], start_new_session=True)
-                iperf.wait()
-                nmap.kill()
-                print("[>] Finished sending packets")
+            attacker.stop_experiment()
 
-                attacker.stop_experiment()
+            # Receiving experiment results
+            msg_esp(b"complete", attacker, esp32_addr, b"D")
 
-                # Receiving experiment results
-                msg_esp(b"complete", attacker, esp32_addr, b"D")
+            print("[+] ESP32 experiment complete, moving to next index")
+            print("[+] Experiment data saved in file")
 
-                print("[+] ESP32 experiment complete, moving to next index")
-                print("[+] Experiment data saved in file")
-                
-                # stop serial monitor thread and serial
-                stop_thread = True
-                monitor.join()
-                ser.close()
-                del attacker
-                time.sleep(5)
+            # stop serial monitor thread and serial
+            stop_thread = True
+            monitor.join()
+            ser.close()
+            del attacker
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()
