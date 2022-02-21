@@ -22,17 +22,16 @@
 #include "protocol_examples_common.h"
 #include "nvs_flash.h"
 #include "model.h"
-#include "driver/gpio.h"
 
 #define MENUCONFIG_PORT             CONFIG_EXAMPLE_PORT
 #define KEEPALIVE_IDLE              CONFIG_EXAMPLE_KEEPALIVE_IDLE
 #define KEEPALIVE_INTERVAL          CONFIG_EXAMPLE_KEEPALIVE_INTERVAL
 #define KEEPALIVE_COUNT             CONFIG_EXAMPLE_KEEPALIVE_COUNT
-#define ATTACKER_ADDRESS            "192.168.15.15" // Change this to your IP
+#define ATTACKER_ADDRESS            "192.168.0.8" // Change this to your IP
+#define ESP32_ADDRESS               "192.168.0.16" // Change this to your IP
 #define ATTACKER_PORT               6767
 #define ATTACKER_EXP_PORT           6768
 #define IPERF_PORT                  5001
-#define ENERGY_GPIO                 5      // PIN for energy monitoring GPIO5
 
 static const char *TAG = "Experiment Server";
 
@@ -75,10 +74,6 @@ void app_main(void) {
         vTaskDelete(NULL);
     }
 
-    struct timeval timeout = { 0 };
-    timeout.tv_sec = 3;
-    setsockopt(attacker_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-
     // 3. Binding our UDP socket so we can receive incoming packets
     if (bind(attacker_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) != 0) {
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
@@ -91,7 +86,7 @@ void app_main(void) {
         .sin_port = htons(ATTACKER_PORT)
     };
     inet_pton(AF_INET, ATTACKER_ADDRESS, &(attacker_addr.sin_addr));
-    
+
     exp_arg_t *arg = malloc(sizeof(exp_arg_t));
     arg->sock = attacker_sock; 
     arg->addr = attacker_addr;
@@ -120,7 +115,7 @@ int iperf_setup_tcp_server(struct sockaddr_in *listen_addr) {
 
     listen_addr->sin_family = AF_INET;
     listen_addr->sin_port = htons(IPERF_PORT);
-    inet_pton(AF_INET, INADDR_ANY, &(listen_addr->sin_addr));
+    inet_pton(AF_INET, ESP32_ADDRESS, &(listen_addr->sin_addr));
 
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
     ESP_GOTO_ON_FALSE((listen_socket >= 0), ESP_FAIL, exit, TAG, "Unable to create socket: errno %d", errno);
@@ -155,7 +150,6 @@ exit:
 }
 
 static void iperf_tcp_server(int attacker_sock) {
-    gpio_set_level(ENERGY_GPIO, 1);
     struct sockaddr_in listen_addr = { 0 };
     int recv_socket = iperf_setup_tcp_server(&listen_addr); 
     socklen_t socklen = sizeof(listen_addr);
@@ -227,6 +221,9 @@ void setup_experiment(exp_arg_t* arg) {
             config.statefull_eval = validate_packet;
             config.mode = STATEFULL;
             break;
+        case 'n':
+            config.mode = UNINITIALIZED;
+            break;
         default:
             ESP_LOGE(TAG, "Invalid tree selected by attacker: %c", chosen_tree);
             return;
@@ -236,19 +233,11 @@ void setup_experiment(exp_arg_t* arg) {
 
     // 4. Signal that ESP32 assigned the tree previously sent and experiment is ready to begin
     send_msg("assigned", arg->sock, &arg->addr);
-
-    // 5. Reset GPIO for future 
-    ESP_LOGI(TAG, "Reseting energy PIN");
-    gpio_reset_pin(ENERGY_GPIO);
-    /* Set the GPIO as a push/pull output */
-    gpio_set_direction(ENERGY_GPIO, GPIO_MODE_OUTPUT);
 }
 
 static void experiment_runner_task(void *pvParameters) {
     exp_arg_t *arg = (exp_arg_t *)pvParameters;
-    gpio_set_level(ENERGY_GPIO, 1);
     iperf_tcp_server(arg->sock);
-    gpio_set_level(ENERGY_GPIO, 0);
 
     // Signal to attacker that esp will restart
     send_msg("complete", arg->sock, &arg->addr);
@@ -330,3 +319,4 @@ void measurer_task(void *pvParameters) {
 
     vTaskDelete(NULL);
 }
+
