@@ -102,10 +102,10 @@ def main():
     
     path = "./output/"
 
-    trees = [b"m"] #[b"0", b"2", b"m", b"n"]
+    trees = [b"n"] #[b"0", b"2", b"m", b"n"]
     for tree in trees:
-        for pkt_count in ["16000000pps"]: #["16000000pps", "8000000pps"]:
-            test_case = tree.decode()+'_'+str(pkt_count)+'_'+str("insane")
+        for pkt_count in ["8000000pps"]: #["16000000pps", "8000000pps"]:
+            test_case = tree.decode()+'_'+str(pkt_count)+'_'+str("nonmap") # insane / nonmap
             test_case.replace('\'',"").replace('"',"")
             file_name = path + test_case + ".csv"
 
@@ -132,12 +132,12 @@ def main():
             attacker.collect_experiment_data()
             time.sleep(2)   # Wait for esp32 open iperf server
             iperf = subprocess.Popen(["iperf", "-c", esp32_addr[0], "-B", "0.0.0.0:5001", "-i", "1", "-t", "180", "-p", "5001", "-b", pkt_count], start_new_session=True)
-            nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True) #always insane
-            while iperf.poll() == None:
-                if nmap.poll() != None:
-                    nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True)
-            iperf.wait()
-            nmap.kill()
+            #nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True) #always insane
+            #while iperf.poll() == None:
+                #if nmap.poll() != None:
+                    #nmap = subprocess.Popen(["nmap", "-sS", esp32_addr[0], "-p-", "-A", "-T", "insane"], start_new_session=True)
+            #iperf.wait()
+            #nmap.kill()
             print("[>] Finished sending packets")
 
             attacker.stop_experiment()
